@@ -49,7 +49,7 @@ optional arguments:
 
 ## Usage
 
-Start wih an image such as this one (it may take some time to load):
+Start wih an image such as this one, reprinted with permission from the author (it may take some time to load):
 
 <img src="https://github.com/miguelmorin/halftone/blob/master/images/Attack%20of%20the%2050%20ft%20improvisers.jpg" width="250" alt="Original poster">
 
