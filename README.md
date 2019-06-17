@@ -51,7 +51,7 @@ optional arguments:
 
 Start wih an image such as this one:
 
-![Original poster](https://github.com/miguelmorin/halftone/images/Attack%20of%20the%2050%20ft%20improvisers.jpg)
+![Original poster](https://github.com/miguelmorin/halftone/blob/master/images/Attack%20of%20the%2050%20ft%20improvisers.jpg)
 
 For this image, the best results occured with the red channel, 3x3 tones, and a
 scan gap of 0.05. Reproduce the results with:
@@ -62,7 +62,8 @@ python3 halftone.py -l 0.05 -s 75x105 -f 'images/Attack of the 50 ft improvisers
 
 See below for an explanation of these options. The result is:
 
-![Bitmap of poster](https://github.com/miguelmorin/halftone/images/Attack%20of%20the%2050%20ft%20improvisers.bmp)
+![Bitmap of
+poster](https://github.com/miguelmorin/halftone/blob/master/images/Attack%20of%20the%2050%20ft%20improvisers.bmp)
 
 
 For best results on LaserCut Pro 5, you should give it a 1-bit depth bitmap that
@@ -78,7 +79,7 @@ pixel.
 I used this image at the Cambridge Makespace on pine wood with the following
 nice result:
 
-![Engraving on pine wood](https://github.com/miguelmorin/halftone/images/result.JPG)
+![Engraving on pine wood](https://github.com/miguelmorin/halftone/blob/master/images/result.JPG)
 
 
 ## Options
