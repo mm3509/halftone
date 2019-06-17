@@ -51,8 +51,7 @@ optional arguments:
 
 Start wih an image such as this one (it may take some time to load):
 
-![Original
-poster](https://github.com/miguelmorin/halftone/blob/master/images/Attack%20of%20the%2050%20ft%20improvisers.jpg | width=100)
+<img src="https://github.com/miguelmorin/halftone/blob/master/images/Attack%20of%20the%2050%20ft%20improvisers.jpg" width="100" height="400" alt="Original poster">
 
 For this image, the best results occured with the red channel, 3x3 tones, and a
 scan gap of 0.05. Reproduce the results with:
