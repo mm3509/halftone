@@ -18,7 +18,7 @@ ALL_WEIGHTS = {"std": [RED_STANDARD, GREEN_STANDARD, BLUE_STANDARD],
                "blue": [0, 0, 1]}
 
 # 0 means black
-TONE_CHOICES = [1, 2, 3]
+TONE_CHOICES = ['1', '2', '3']
 TONES1 = [[0], [1]]
 
 TONES2 = [[0, 0,
@@ -79,7 +79,7 @@ def get_args():
     parser.add_argument("-r", "--red",  default=RED_STANDARD)
     parser.add_argument("-g", "--green", default=GREEN_STANDARD)
     parser.add_argument("-b", "--blue", default=BLUE_STANDARD)
-    parser.add_argument("-t", "--tones", choices=TONE_CHOICES, default=3)
+    parser.add_argument("-t", "--tones", choices=TONE_CHOICES, default='3')
 		
     # Array for all arguments passed to script
     args = parser.parse_args()
@@ -100,8 +100,8 @@ def process_tones(tones, tone_num, tone_dim):
 def rescale(img, width, height, line_gap, tone_dim, overflow):
     
     """Rescales image to have the right size for half-toning and engraving."""
-    width_lines = int(round(math.ceil(width / line_gap / tone_dim)))
-    height_lines = int(round(math.ceil(height / line_gap / tone_dim)))
+    width_lines_target = int(round(math.ceil(width / line_gap / tone_dim)))
+    height_lines_target = int(round(math.ceil(height / line_gap / tone_dim)))
 
     img_height = img.shape[0]
     img_width = img.shape[1]
@@ -110,39 +110,44 @@ def rescale(img, width, height, line_gap, tone_dim, overflow):
     # centering. This image is centered but the half-toned image may not be
     # because 1 pixel difference between the paddings here means 3 pixels of
     # difference in the final image with 3x3 tones.
-    width_correct = (float(width_lines) / img_width) < (float(height_lines) / img_height)
+    width_correct = ((float(width_lines_target) / img_width) <
+                     (float(height_lines_target) / img_height))
 
     # Flip it in case the image needs to overflow the size
     if "y" == overflow:
         width_correct = not width_correct
         
     if width_correct:
-        target_lines = int(math.ceil(width_lines * img_height / img_width))
-        
-        pad = height_lines - target_lines
-        pad_top = pad // 2
-        pad_bottom = pad - pad_top
-        pad_left = 0
-        pad_right = 0
-        
-        height_lines = target_lines
+        width_lines = width_lines_target
+        height_lines = int(math.ceil(width_lines * img_height / img_width))
     else:
-        target_lines = int(math.ceil(height_lines * img_width / img_height))
-        
-        pad = width_lines - target_lines
-        pad_left = pad // 2
-        pad_right = pad - pad_left
-        pad_top = 0
-        pad_bottom = 0
-
-        width_lines = target_lines
+        height_lines = height_lines_target
+        width_lines = int(math.ceil(height_lines * img_width / img_height))
         
     # Resize: note that width comes first, unlike the shape!
     resized = cv2.resize(img, (width_lines, height_lines), interpolation = cv2.INTER_CUBIC)
 
-    # Pad to reach requested size
-    padded = cv2.copyMakeBorder(resized, pad_top, pad_bottom, pad_left, pad_right, cv2.BORDER_CONSTANT, value=WHITE)
-    return padded
+
+    # If the image needs does not overflow, return now
+    if "y" == overflow:
+        return resized
+
+    # Otherwise, pad it
+    if width_correct:
+        pad = height_lines_target - height_lines
+        pad_top = pad // 2
+        pad_bottom = pad - pad_top
+        pad_left = 0
+        pad_right = 0
+    else:
+        pad = width_lines_target - width_lines
+        pad_left = pad // 2
+        pad_right = pad - pad_left
+        pad_top = 0
+        pad_bottom = 0
+        
+    # Pad and return
+    return cv2.copyMakeBorder(resized, pad_top, pad_bottom, pad_left, pad_right, cv2.BORDER_CONSTANT, value=WHITE)
 
 def convert_to_grayscale(img, red_weight, green_weight, blue_weight):
     """Converts RGB to grayscale using file-level constant weights."""
@@ -187,11 +192,11 @@ def process_image(filepath, width, height, line_gap, red_weight,
     img = cv2.imread(filepath)
 
     assert tones in TONE_CHOICES
-    if 1 == tones:
+    if '1' == tones:
         tones = TONES1
-    elif 2 == tones:
+    elif '2' == tones:
         tones = TONES2
-    elif 3 == tones:
+    elif '3' == tones:
         tones = TONES3
     else:
         assert False, "Unknown option %s" % tones
