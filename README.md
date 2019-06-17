@@ -51,7 +51,7 @@ optional arguments:
 
 Start wih an image such as this one (it may take some time to load):
 
-<img src="https://github.com/miguelmorin/halftone/blob/master/images/Attack%20of%20the%2050%20ft%20improvisers.jpg" width="100" height="400" alt="Original poster">
+<img src="https://github.com/miguelmorin/halftone/blob/master/images/Attack%20of%20the%2050%20ft%20improvisers.jpg" width="200" alt="Original poster">
 
 For this image, the best results occured with the red channel, 3x3 tones, and a
 scan gap of 0.05. Reproduce the results with:
@@ -62,9 +62,7 @@ python3 halftone.py -l 0.05 -s 75x105 -f 'images/Attack of the 50 ft improvisers
 
 See below for an explanation of these options. The result is:
 
-![Bitmap of
-poster](https://github.com/miguelmorin/halftone/blob/master/images/Attack%20of%20the%2050%20ft%20improvisers.bmp | width=100)
-
+<img alt="Bitmap of poster" src="https://github.com/miguelmorin/halftone/blob/master/images/Attack%20of%20the%2050%20ft%20improvisers.bmp" width=200>
 
 For best results on LaserCut Pro 5, you should give it a 1-bit depth bitmap that
 does not require additional processing, simply telling the laser where to turn
