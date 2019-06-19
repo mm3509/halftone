@@ -63,15 +63,13 @@ python3 halftone.py -l 0.05 -s 75x105 -f 'images/Attack of the 50 ft improvisers
 See below for an explanation of these options. The result is here (it may take
 some time to load):
 
-<img alt="Bitmap of poster" src="https://github.com/miguelmorin/halftone/blob/master/images/Attack%20of%20the%2050%20ft%20improvisers.bmp" width=250>
+<img alt="Bitmap of poster" src="https://github.com/miguelmorin/halftone/blob/master/images/Attack%20of%20the%2050%20ft%20improvisers.png" width=250>
 
 For best results on LaserCut Pro 5, you should give it a 1-bit depth bitmap that
 does not require additional processing, simply telling the laser where to turn
 on and off. Otherwise, you will need to process it with `Tools > Half Bmitmap`
-for example. I have been unable to save bitmaps with depth of 1 bit in OpenCV,
-so I open it in Photoshop, change the image mode to Grayscale, then to Bitmap
-with 50% threshold, and I save as a bitmap with depth of 1-bit. I also need to
-rescale it to the desired size because the default resolution of 72 ppi changes
+for example. The code saves files as 1-bit PNG files. You should also rescale
+the image to the desired size because the default resolution of 72 ppi changes
 the size of the image and the line gap of 0.05mm no longer corresponds to one
 pixel.
 

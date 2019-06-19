@@ -154,7 +154,6 @@ def convert_to_grayscale(img, red_weight, green_weight, blue_weight):
     coefficients = [blue_weight, green_weight, red_weight]
     m = numpy.array(coefficients).reshape((1,3)) / (blue_weight + green_weight + red_weight)
 
-    # TODO(mmorin): change division to also adjust overall brightness?
     gray = cv2.transform(img, m)
     return gray
 
@@ -186,7 +185,7 @@ def process_image(filepath, width, height, line_gap, red_weight,
                   green_weight, blue_weight, tones, overflow, suffix = ""):
     """Wrapper function that calls the others."""
 
-    new_filepath = os.path.splitext(filepath)[0] + suffix + ".bmp"
+    new_filepath = os.path.splitext(filepath)[0] + suffix + ".png"
     assert not os.path.exists(new_filepath)
 
     img = cv2.imread(filepath)
@@ -216,11 +215,11 @@ def process_image(filepath, width, height, line_gap, red_weight,
     
     # Half-tone
     tones_dict = process_tones(tones, tone_num = tone_num, tone_dim = tone_dim)
-    bmp = halftone(gray, tones_dict = tones_dict,
+    png = halftone(gray, tones_dict = tones_dict,
                    tone_num = tone_num, tone_dim = tone_dim)
 
     # Save
-    cv2.imwrite(new_filepath, bmp)
+    cv2.imwrite(new_filepath, png, [cv2.IMWRITE_PNG_BILEVEL, 1])
 
 def process_all_options(filepath, width, height, line_gap, overflow):
 
