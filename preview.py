@@ -4,7 +4,7 @@ import numpy
 import os
 
 # For the Betsy laser cutter at the Cambridge Makespace, use either spillovers
-# of 3 and 3 and a burn of 0.6, or spillovers of 5 and 5 and a burn of 0.15
+# of 3 and 3 and a burn of 0.38, or spillovers of 5 and 5 and a burn of 0.13
 
 def get_args():
     """This function parses and return arguments passed in"""
@@ -15,7 +15,7 @@ def get_args():
     parser.add_argument("-f", "--filepath", required=True)
     parser.add_argument("-x", "--x_spillover", default=3)
     parser.add_argument("-y", "--y_spillover", default=3)
-    parser.add_argument("-b", "--burn", default=0.6)
+    parser.add_argument("-b", "--burn", default=0.38)
 
     args = parser.parse_args()
     return args
@@ -42,7 +42,7 @@ def generate_influence(x_pad, y_pad, burn):
             if distance == 0:
                 influence[row, col] = 1
             elif distance < 1:
-                influence[row, col] = burn * distance
+                influence[row, col] = burn * (1 - distance)
 
     return influence
 
