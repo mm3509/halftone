@@ -10,9 +10,9 @@ def get_args():
         description='Preview result of bitmaps engraved in laser-cutter')
     # Add arguments
     parser.add_argument("-f", "--filepath", required=True)
-    parser.add_argument("-x", "--x_spillover", default=3)
-    parser.add_argument("-y", "--y_spillover", default=3)
-    parser.add_argument("-b", "--burn", default=0.0025)
+    parser.add_argument("-x", "--x_spillover", default=5)
+    parser.add_argument("-y", "--y_spillover", default=5)
+    parser.add_argument("-b", "--burn", default=0.15)
 
     args = parser.parse_args()
     return args
@@ -67,8 +67,8 @@ def convolution(img, influence):
             # Extract region of interest
             roi = padded[i:i + 2 * pad_y + 1, j:j + 2 * pad_x + 1]
 
-            # Convert to burn
-            area = 255 - roi
+            # Convert to burn on percent scale
+            area = 1 - roi / 255
 
             # Convolve, with maximum at 100% black
             burn_spread = min(1, (influence * area).sum())
@@ -118,6 +118,7 @@ def main():
     x_spillover = args.x_spillover
     y_spillover = args.y_spillover
     burn = float(args.burn)
+
     process_image(filepath, x = x_spillover, y = y_spillover, burn = burn)
 
 if "__main__" == __name__:
