@@ -3,6 +3,9 @@ import cv2
 import numpy
 import os
 
+# For the Betsy laser cutter at the Cambridge Makespace, use either spillovers
+# of 3 and 3 and a burn of 0.6, or spillovers of 5 and 5 and a burn of 0.15
+
 def get_args():
     """This function parses and return arguments passed in"""
     # Assign description to the help doc
@@ -10,9 +13,9 @@ def get_args():
         description='Preview result of bitmaps engraved in laser-cutter')
     # Add arguments
     parser.add_argument("-f", "--filepath", required=True)
-    parser.add_argument("-x", "--x_spillover", default=5)
-    parser.add_argument("-y", "--y_spillover", default=5)
-    parser.add_argument("-b", "--burn", default=0.15)
+    parser.add_argument("-x", "--x_spillover", default=3)
+    parser.add_argument("-y", "--y_spillover", default=3)
+    parser.add_argument("-b", "--burn", default=0.6)
 
     args = parser.parse_args()
     return args
