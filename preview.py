@@ -1,7 +1,12 @@
 import argparse
 import cv2
+import glob
 import numpy
 import os
+import pathlib
+
+IMAGE_EXTENSIONS = ("jpg", "jpeg", "png")
+SUFFIX = "_preview"
 
 # For the Betsy laser cutter at the Cambridge Makespace, use either spillovers
 # of 3 and 3 and a burn of 0.38, or spillovers of 5 and 5 and a burn of 0.13
@@ -83,15 +88,11 @@ def convolution(img, influence):
 
 
 def process_image(filepath, x, y, burn):
-    new_filepath = os.path.splitext(filepath)[0] + "_preview.png"
+    new_filepath = os.path.splitext(filepath)[0] + SUFFIX + ".png"
     if os.path.exists(new_filepath):
         #raise ValueError("The destination file %s already exists" % new_filepath)
         # TODO(mmorin): remove this
         pass
-
-    if not os.path.exists(filepath):
-        raise ValueError("The source file %s does not exist" %filepath)
-
 
     # X and Y should be odd, otherwise increment
     x_odd = x if 0 != x % 2 else x + 1
@@ -122,7 +123,19 @@ def main():
     y_spillover = args.y_spillover
     burn = float(args.burn)
 
-    process_image(filepath, x = x_spillover, y = y_spillover, burn = burn)
+    p = pathlib.Path(filepath)
+    if not p.exists():
+        raise ValueError("The source file or directory %s does not exist" %filepath)
+    if not p.is_dir():
+        process_image(filepath, x = x_spillover, y = y_spillover, burn = burn)
+    else:
+        for f in glob.glob(os.path.join(filepath, "*.*")):
+            if (f.lower().endswith(IMAGE_EXTENSIONS) and
+                not os.path.splitext(f)[0].endswith(SUFFIX)):
+                
+                print("Processing %s" % f)
+                process_image(f, x = x_spillover, y = y_spillover, burn = burn)
+    
 
 if "__main__" == __name__:
     main()
