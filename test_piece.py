@@ -13,7 +13,9 @@ WHITE_SPACE = 255 * numpy.ones((BAND_SPACING, BAND_WIDTH), dtype = numpy.uint8)
 TEST_FILEPATH = "images/test.png"
 
 def generate_test_piece():
-    for spacing in range(1, MAX_SPACING_PX + 1):
+
+    ## Odd numbers only, since the convolution filter takes only those
+    for spacing in range(1, MAX_SPACING_PX + 1, 2):
 
         addition = numpy.vstack([BLACK_BAND,
                                  255 * numpy.ones((spacing, BAND_WIDTH), dtype = numpy.uint8),
