@@ -8,8 +8,9 @@ import pathlib
 IMAGE_EXTENSIONS = ("jpg", "jpeg", "png")
 SUFFIX = "_preview"
 
-# For the Betsy laser cutter at the Cambridge Makespace, use either spillovers
-# of 3 and 3 and a burn of 0.38, or spillovers of 5 and 5 and a burn of 0.13
+# For the Betsy laser cutter at the Cambridge Makespace, and with laser plywood
+# from Slec, use either spillovers of 3 and 3 and a burn of 0.38, or spillovers
+# of 5 and 5 and a burn of 0.13
 
 def get_args():
     """This function parses and return arguments passed in"""
