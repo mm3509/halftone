@@ -9,6 +9,10 @@ WHITE = [255, 255, 255]
 QUANTILES = "quantiles"
 BINS = "bins"
 
+# This value is the default for brightness adjustment of an image and works well
+# for the laser cutter in Cambridge.
+MINIMUM_BRIGHTNESS = 0.66
+
 RED_STANDARD = 299
 GREEN_STANDARD = 587
 BLUE_STANDARD = 114
@@ -80,6 +84,7 @@ def get_args():
     parser.add_argument("-g", "--green", default=GREEN_STANDARD)
     parser.add_argument("-b", "--blue", default=BLUE_STANDARD)
     parser.add_argument("-t", "--tones", choices=TONE_CHOICES, default='3')
+    parser.add_argument("-m", "--minimum_brightness", default=MINIMUM_BRIGHTNESS)
 		
     # Array for all arguments passed to script
     args = parser.parse_args()
@@ -96,6 +101,99 @@ def process_tones(tones, tone_num, tone_dim):
         bitmap_tone = numpy.reshape(t, (tone_dim, tone_dim)) * 255
         tones_dict[brightness] = bitmap_tone
     return(tones_dict)
+
+def adjust_brightness_directly(gray_img, minimum_brightness):
+    """Adjusts the brightness of a grayscale image with a direct calculation of bias
+    and gain.
+    """
+
+    if 3 <= len(gray_img.shape):
+        raise ValueError("Expected a grayscale image, color channels found")
+    
+    cols, rows = gray_img.shape
+    brightness = numpy.sum(gray_img) / (255 * cols * rows)
+
+    ratio = brightness / minimum_brightness
+    if ratio >= 1:
+        print("Image already bright enough")
+        return img
+
+    # Otherwise, adjust brightness to get the target brightness. Except for
+    # saturation arithmetics, the new brightness should be the target brightness
+    bright_img = cv2.convertScaleAbs(gray_img, alpha = 1 / ratio, beta = 0)
+
+    print("Old: " + str(brightness))
+    print("New: " + str(numpy.sum(bright_img) / (255 * cols * rows)))
+
+    return bright_img
+
+def percentile_to_bias_and_gain(gray_img, percentile):
+    """Computs the bias and gain that corresponds to clipping the given percentile
+    from the shadows and the highlights.
+    """
+
+    if 3 <= len(gray_img.shape):
+        raise ValueError("Expected a grayscale image, color channels found")
+    
+    # Code from
+    # https://stackoverflow.com/questions/57030125/adjusting-brightness-automatically-and-without-veil/57046925
+
+    # Calculate grayscale histogram
+    hist = cv2.calcHist([gray_img], [0], None, [256], [0, 256])
+    hist_size = len(hist)
+
+    # Calculate cumulative distribution from the histogram
+    accumulator = []
+    accumulator.append(float(hist[0]))
+    for index in range(1, hist_size):
+        accumulator.append(accumulator[index -1] + float(hist[index]))
+
+    # Locate points to clip
+    maximum = accumulator[-1]
+    clip_hist = percentile * maximum / (2 * 100.0)
+
+    # Locate left cut
+    minimum_gray = 0
+    while accumulator[minimum_gray] < clip_hist:
+        minimum_gray += 1
+
+    # Locate right cut
+    maximum_gray = hist_size -1
+    while accumulator[maximum_gray] >= (maximum - clip_hist):
+        maximum_gray -= 1
+
+    # Calculate alpha and beta values
+    alpha = 255 / (maximum_gray - minimum_gray)
+    beta = - minimum_gray * alpha
+
+    return alpha, beta
+    
+
+def adjust_brightness_with_histogram(gray_img, minimum_brightness):
+    """Adjusts brightness with histogram clipping by trial and error.
+    """
+
+    if 3 <= len(gray_img.shape):
+        raise ValueError("Expected a grayscale image, color channels found")
+
+    new_img = gray_img
+    percentile = 0.1
+
+    while True:
+        cols, rows = new_img.shape
+        brightness = numpy.sum(new_img) / (255 * cols * rows)
+
+        if brightness >= minimum_brightness:
+            break
+
+        percentile += 0.1
+        alpha, beta = percentile_to_bias_and_gain(new_img, percentile)
+        new_img = cv2.convertScaleAbs(gray_img, alpha = alpha, beta = beta)
+
+    print("New brightness: " + str(brightness))
+        
+    return new_img
+
 
 def rescale(img, width, height, line_gap, tone_dim, overflow):
     
@@ -182,7 +280,7 @@ def halftone(gray, tones_dict, tone_num, tone_dim):
     return output
 
 def process_image(filepath, width, height, line_gap, red_weight,
-                  green_weight, blue_weight, tones, overflow, suffix = ""):
+                  green_weight, blue_weight, tones, overflow, minimum_brightness, suffix = ""):
     """Wrapper function that calls the others."""
 
     new_filepath = os.path.splitext(filepath)[0] + suffix + ".png"
@@ -209,19 +307,27 @@ def process_image(filepath, width, height, line_gap, red_weight,
                          overflow = overflow)
 
     # Convert to gray
-    gray = convert_to_grayscale(img_scaled, red_weight = red_weight,
+    gray = convert_to_grayscale(img, red_weight = red_weight,
                                 green_weight = green_weight,
                                 blue_weight = blue_weight)
     
+    # Adjust brightness
+    # TODO: change this depending on results
+    bright = adjust_brightness_directly(gray, minimum_brightness = minimum_brightness)
+
+    # Save
+    cv2.imwrite(new_filepath, bright)
+    return
+
     # Half-tone
     tones_dict = process_tones(tones, tone_num = tone_num, tone_dim = tone_dim)
-    png = halftone(gray, tones_dict = tones_dict,
+    png = halftone(bright, tones_dict = tones_dict,
                    tone_num = tone_num, tone_dim = tone_dim)
 
     # Save
     cv2.imwrite(new_filepath, png, [cv2.IMWRITE_PNG_BILEVEL, 1])
 
-def process_all_options(filepath, width, height, line_gap, overflow):
+def process_all_options(filepath, width, height, line_gap, overflow, minimum_brightness):
 
 
     for tones in [1, 2, 3]:
@@ -241,7 +347,8 @@ def process_all_options(filepath, width, height, line_gap, overflow):
                           blue_weight = blue_weight,
                           tones = tones,
                           suffix = suffix,
-                          overflow = overflow)
+                          overflow = overflow,
+                          minimum_brightness = minimum_brightness)
 
     
 def main():
@@ -252,6 +359,7 @@ def main():
     line_gap = float(args.line_gap)
     overflow = args.overflow
     all_options = args.all_options
+    minimum_brightness = float(args.minimum_brightness)
 
     assert os.path.exists(filepath), "Input file missing!"
     
@@ -261,7 +369,8 @@ def main():
 
     if "y" == all_options:
         process_all_options(filepath, width = width, height = height,
-                            line_gap = line_gap, overflow = overflow)
+                            line_gap = line_gap, overflow = overflow,
+                            minimum_brightness = minimum_brightness)
     else:
         red_weight = int(args.red)
         green_weight = int(args.green)
@@ -271,7 +380,8 @@ def main():
         process_image(filepath, width = width, height = height,
                       line_gap = line_gap, overflow = overflow,
                       red_weight = red_weight, green_weight = green_weight,
-                      blue_weight = blue_weight, tones = tones)
+                      blue_weight = blue_weight, tones = tones,
+                      minimum_brightness = minimum_brightness)
                       
 
 if "__main__" == __name__:
