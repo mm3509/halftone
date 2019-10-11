@@ -5,7 +5,7 @@ import numpy
 
 MAX_SPACING_PX = 10
 
-BAND_WIDTH = 20 * 20
+BAND_WIDTH =  200
 BAND_HEIGHT = 20
 BAND_SPACING = 40
 
@@ -56,10 +56,12 @@ def generate_squares_piece():
 
 def save_test_pieces(dir):
     lines = generate_lines_piece()
-    cv2.imwrite(os.path.join(dir, "lines.png"), lines, [cv2.IMWRITE_PNG_BILEVEL, 1])
+    width, height = lines.shape
+    cv2.imwrite(os.path.join(dir, "lines %d x %d.png" % (width, height)), lines, [cv2.IMWRITE_PNG_BILEVEL, 1])
 
     squares = generate_squares_piece()
-    cv2.imwrite(os.path.join(dir, "squares.png"), squares, [cv2.IMWRITE_PNG_BILEVEL, 1])
+    width, height = squares.shape
+    cv2.imwrite(os.path.join(dir, "squares %d x %d.png" % (width, height)), squares, [cv2.IMWRITE_PNG_BILEVEL, 1])
                 
 
 def main():

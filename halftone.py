@@ -5,6 +5,8 @@ import os
 
 import cv2
 
+import preview
+
 WHITE = [255, 255, 255]
 QUANTILES = "quantiles"
 BINS = "bins"
@@ -22,7 +24,7 @@ ALL_WEIGHTS = {"std": [RED_STANDARD, GREEN_STANDARD, BLUE_STANDARD],
                "blue": [0, 0, 1]}
 
 # 0 means black
-TONE_CHOICES = ['1', '2', '3']
+TONE_CHOICES_STR = ['3'] # ['1', '2', '3']
 TONES1 = [[0], [1]]
 
 TONES2 = [[0, 0,
@@ -83,7 +85,7 @@ def get_args():
     parser.add_argument("-r", "--red",  default=RED_STANDARD)
     parser.add_argument("-g", "--green", default=GREEN_STANDARD)
     parser.add_argument("-b", "--blue", default=BLUE_STANDARD)
-    parser.add_argument("-t", "--tones", choices=TONE_CHOICES, default='3')
+    parser.add_argument("-t", "--tones", default='3')
     parser.add_argument("-m", "--minimum_brightness", default=MINIMUM_BRIGHTNESS)
 		
     # Array for all arguments passed to script
@@ -196,7 +198,6 @@ def adjust_brightness_with_histogram(gray_img, minimum_brightness):
 
 
 def rescale(img, width, height, line_gap, tone_dim, overflow):
-    
     """Rescales image to have the right size for half-toning and engraving."""
     width_lines_target = int(round(math.ceil(width / line_gap / tone_dim)))
     height_lines_target = int(round(math.ceil(height / line_gap / tone_dim)))
@@ -221,10 +222,11 @@ def rescale(img, width, height, line_gap, tone_dim, overflow):
     else:
         height_lines = height_lines_target
         width_lines = int(math.ceil(height_lines * img_width / img_height))
-        
+
+    print("New image size: %d x %d" % (height_lines, width_lines))
+
     # Resize: note that width comes first, unlike the shape!
     resized = cv2.resize(img, (width_lines, height_lines), interpolation = cv2.INTER_CUBIC)
-
 
     # If the image needs does not overflow, return now
     if "y" == overflow:
@@ -269,6 +271,9 @@ def halftone(gray, tones_dict, tone_num, tone_dim):
     for i in range(num_rows):
         i_output = range(i * tone_dim, (i + 1)* tone_dim)
 
+        if 0 == i % 10:
+            print("At row %d of %d" % (i, num_rows))
+
         for j in range(num_cols):
             j_output = range(j * tone_dim, (j + 1)* tone_dim)
             
@@ -280,24 +285,26 @@ def halftone(gray, tones_dict, tone_num, tone_dim):
     return output
 
 def process_image(filepath, width, height, line_gap, red_weight,
-                  green_weight, blue_weight, tones, overflow, minimum_brightness, suffix = ""):
+                  green_weight, blue_weight, tones_str, overflow, minimum_brightness, suffix = "", do_halftoning = True, do_previewing = True):
     """Wrapper function that calls the others."""
 
     new_filepath = os.path.splitext(filepath)[0] + suffix + ".png"
-    assert not os.path.exists(new_filepath)
 
     img = cv2.imread(filepath)
 
-    assert tones in TONE_CHOICES
-    if '1' == tones:
+    assert tones_str in TONE_CHOICES_STR, "Unable to deal with '%s' tone(s), type: %s" % (tones_str, type(tones_str))
+    if '1' == tones_str:
         tones = TONES1
-    elif '2' == tones:
+    elif '2' == tones_str:
         tones = TONES2
-    elif '3' == tones:
+    elif '3' == tones_str:
         tones = TONES3
     else:
         assert False, "Unknown option %s" % tones
 
+    # Tone number is the number of tones. Tone dimension is the side length of
+    # the square with the tones, i.e. 1 for 2 tones, 2 for 5 tones, 3 for 10
+    # tones
     tone_num = len(tones)
     tone_dim = int(math.sqrt(tone_num - 1))
     
@@ -307,32 +314,44 @@ def process_image(filepath, width, height, line_gap, red_weight,
                          overflow = overflow)
 
     # Convert to gray
-    gray = convert_to_grayscale(img, red_weight = red_weight,
+    gray = convert_to_grayscale(img_scaled, red_weight = red_weight,
                                 green_weight = green_weight,
                                 blue_weight = blue_weight)
     
     # Adjust brightness
-    # TODO: change this depending on results
-    bright = adjust_brightness_directly(gray, minimum_brightness = minimum_brightness)
+    if False:
+        brightener = adjust_brightness_directly
+    else:
+        brightener = adjust_brightness_with_histogram
+    bright = brightener(gray, minimum_brightness = minimum_brightness)
 
-    # Save
-    cv2.imwrite(new_filepath, bright)
-    return
-
+    if not do_halftoning:
+        cv2.imwrite(new_filepath, bright)
+        return
+    
     # Half-tone
+    print("Starting half-toning")
     tones_dict = process_tones(tones, tone_num = tone_num, tone_dim = tone_dim)
     png = halftone(bright, tones_dict = tones_dict,
                    tone_num = tone_num, tone_dim = tone_dim)
 
     # Save
     cv2.imwrite(new_filepath, png, [cv2.IMWRITE_PNG_BILEVEL, 1])
+    print("Saved %s" % new_filepath)
+
+    if not do_previewing:
+        return
+
+    # Also save a preview of what the result will be? Not for now, because it takes long
+    preview_fp = preview.process_image(new_filepath)
+    print("Saved preview at %s" % preview_fp)
 
 def process_all_options(filepath, width, height, line_gap, overflow, minimum_brightness):
 
 
-    for tones in [1, 2, 3]:
+    for tones_str in TONE_CHOICES_STR:
         for weight_str in ALL_WEIGHTS:
-            suffix = " %d %s" % (tones, weight_str)
+            suffix = " %s %s" % (tones_str, weight_str)
             weights = ALL_WEIGHTS[weight_str]
             red_weight = weights[0]
             green_weight = weights[1]
@@ -345,7 +364,7 @@ def process_all_options(filepath, width, height, line_gap, overflow, minimum_bri
                           red_weight = red_weight,
                           green_weight = green_weight,
                           blue_weight = blue_weight,
-                          tones = tones,
+                          tones_str = tones_str,
                           suffix = suffix,
                           overflow = overflow,
                           minimum_brightness = minimum_brightness)
@@ -375,12 +394,12 @@ def main():
         red_weight = int(args.red)
         green_weight = int(args.green)
         blue_weight = int(args.blue)
-        tones = args.tones
+        tones_str = args.tones
 
         process_image(filepath, width = width, height = height,
                       line_gap = line_gap, overflow = overflow,
                       red_weight = red_weight, green_weight = green_weight,
-                      blue_weight = blue_weight, tones = tones,
+                      blue_weight = blue_weight, tones_str = tones_str,
                       minimum_brightness = minimum_brightness)
                       
 

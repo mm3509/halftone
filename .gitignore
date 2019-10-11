@@ -1,2 +1,3 @@
 .DS_Store
 filter.png
+__pycache__/*

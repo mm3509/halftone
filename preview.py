@@ -8,8 +8,13 @@ import pathlib
 IMAGE_EXTENSIONS = ("jpg", "jpeg", "png")
 SUFFIX = "_preview"
 
-X_SPILLOVER = 3
-Y_SPILLOVER = 3
+# For the Betsy laser cutter at the Cambridge Makespace, and with laser plywood
+# from Slec, use either spillovers of 3 and 3 and a burn of 0.38, or spillovers
+# of 5 and 5 and a burn of 0.13
+
+X_SPILLOVER = 5
+Y_SPILLOVER = 5
+BURN = 0.13
 
 def get_args():
     """This function parses and return arguments passed in"""
@@ -18,10 +23,6 @@ def get_args():
         description='Preview result of bitmaps engraved in laser-cutter')
     # Add arguments
     parser.add_argument("-f", "--filepath", required=True)
-
-    # For the Betsy laser cutter at the Cambridge Makespace, and with laser plywood
-    # from Slec, use either spillovers of 3 and 3 and a burn of 0.38, or spillovers
-    # of 5 and 5 and a burn of 0.13
 
     parser.add_argument("-x", "--x_spillover", default=X_SPILLOVER)
     parser.add_argument("-y", "--y_spillover", default=Y_SPILLOVER)
@@ -92,7 +93,7 @@ def convolution(img, influence):
     return output
 
 
-def process_image(filepath, x, y, burn):
+def process_image(filepath, x = X_SPILLOVER, y = Y_SPILLOVER, burn = BURN):
     new_filepath = os.path.splitext(filepath)[0] + SUFFIX + ".png"
     if os.path.exists(new_filepath):
         #raise ValueError("The destination file %s already exists" % new_filepath)
@@ -118,7 +119,8 @@ def process_image(filepath, x, y, burn):
     
     # Save
     cv2.imwrite(new_filepath, output)
-    
+
+    return new_filepath
     
 def main():
     args = get_args()
