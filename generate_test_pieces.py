@@ -32,37 +32,10 @@ def generate_lines_piece():
 
     return piece
 
-def generate_squares_piece():
-    """Generate test piece with squares to gauge the minimum area for burning.
-    """
-
-    for square_dim in range(1, MAX_SPACING_PX):
-
-        center = MAX_SPACING_PX // 2
-        coord_start = center - square_dim // 2
-        coord_end = coord_start + square_dim + 1
-
-        addition = 255 * numpy.ones((MAX_SPACING_PX + 2, MAX_SPACING_PX + 2), dtype = numpy.uint8)
-        addition[numpy.ix_(range(coord_start, coord_end), range(coord_start, coord_end))] = 0
-
-        multiple = numpy.hstack([addition, addition, addition])
-        
-        if 1 == square_dim:
-            piece = multiple
-        else:
-            piece = numpy.vstack([piece, multiple])
-
-    return piece
-
 def save_test_pieces(dir):
     lines = generate_lines_piece()
     width, height = lines.shape
     cv2.imwrite(os.path.join(dir, "lines %d x %d.png" % (width, height)), lines, [cv2.IMWRITE_PNG_BILEVEL, 1])
-
-    squares = generate_squares_piece()
-    width, height = squares.shape
-    cv2.imwrite(os.path.join(dir, "squares %d x %d.png" % (width, height)), squares, [cv2.IMWRITE_PNG_BILEVEL, 1])
-                
 
 def main():
     save_test_pieces(dir = OUTPUT_DIR)
