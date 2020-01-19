@@ -130,3 +130,47 @@ Please use the Issues on the Github page to file issues with problems or suggest
 
 Please file an issue if you would like a commission of laser-engraved pictures
 on wood.
+
+# problems and adjustments
+
+This section uses the following picture of a bunny to demonstrate results:
+
+<img
+src="https://github.com/miguelmorin/halftone/blob/master/images/bunny.JPG" alt="Sample photo of a bunny">
+
+## Laser Cut Pro skipping lines
+
+LaserCut Pro some
+
+Ideally each binary pixel in the the PNG file controls whether the laser turns
+on or off. For example, when the result is 400 pixels by 400 pixels, resized to
+20 mm x 20 mm in LaserCut Pro, and the scan gap is 0.05, the each pixels
+corresponds to a square of 0.05 x 0.05, so a black pixel should turn the laser
+on and a white pixel should turn the laser off.
+
+But LaserCut Pro skips lines when this alignment is exact as in this photo with
+scan gaps 0.2 and 0.1:
+
+<img src="https://github.com/miguelmorin/halftone/blob/master/images/Laser%20Cut%20Pro%20skipping%20lines.JPG" width="250" alt="Laser cut pro skipping lines">
+
+My solution at the moment consists of adding one extra pixel so each scan gap is
+in between two lines of pixels in the original.
+
+## dependence on material
+
+The results heavily depend on the material. Different woods, different types of
+plywood, and different batches of the same plywood. Even different sides of the
+same plywood stock will give different results, as shown in these pictures with
+the same halftoned image where the front of the material is notably darker:
+
+<img
+src="https://github.com/miguelmorin/halftone/blob/master/images/bunny_front.JPG" alt="bunny engraving at the front">
+
+<img
+src="https://github.com/miguelmorin/halftone/blob/master/images/bunny_back.JPG" alt="bunny engraving at the back">
+
+In fact, this project started because of the dependence on material: I started
+with a dither filter from ImageMagick, tried with one image, and obtained such
+great results that I was hooked. Then with another image and a different type of
+wood, the results were poor. So I decided to use a method that would work well
+on any wood.
