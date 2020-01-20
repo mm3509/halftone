@@ -39,6 +39,13 @@ ALL_WEIGHTS = {"std": [RED_STANDARD, GREEN_STANDARD, BLUE_STANDARD],
 DIRECT_BRIGHTENER = "direct"
 ALPHABETA_BRIGHTENER = "alpha-beta"
 GAMMA_BRIGHTENER = "gamma"
+ALPHABETAGAMMA_BRIGHTENER = "alpha-beta-gamma"
+ALL_BRIGHTENERS = [DIRECT_BRIGHTENER,
+                   ALPHABETA_BRIGHTENER,
+                   GAMMA_BRIGHTENER,
+                   ALPHABETAGAMMA_BRIGHTENER,
+]
+PERCENTILE_STEP = 0.6
 GAMMA_STEP = 0.01
 
 # 0 means black
@@ -106,7 +113,7 @@ def get_args():
     parser.add_argument("-t", "--tones", default='3')
     parser.add_argument("-m", "--minimum_brightness", default=MINIMUM_BRIGHTNESS)
     parser.add_argument("-p", "--do_previewing", default="n")
-    parser.add_argument("-c", "--color_brightener", choices=[DIRECT_BRIGHTENER, ALPHABETA_BRIGHTENER, GAMMA_BRIGHTENER], default=GAMMA_BRIGHTENER)
+    parser.add_argument("-c", "--color_brightener", choices=ALL_BRIGHTENERS, default=ALPHABETAGAMMA_BRIGHTENER)
     parser.add_argument("-q", "--percentile_saturation", default=PERCENTILE_SATURATION)
 		
     # Array for all arguments passed to script
@@ -204,7 +211,7 @@ def percentile_to_bias_and_gain(gray_img, percentile):
     return alpha, beta
     
 
-def adjust_brightness_with_histogram(gray_img, minimum_brightness):
+def adjust_brightness_with_histogram(gray_img, minimum_brightness, percentile_step = PERCENTILE_STEP):
     """Adjusts brightness with histogram clipping by trial and error.
     """
 
@@ -212,7 +219,7 @@ def adjust_brightness_with_histogram(gray_img, minimum_brightness):
         raise ValueError("Expected a grayscale image, color channels found")
 
     new_img = gray_img
-    percentile = 0.1
+    percentile = percentile_step
     brightness_changed = False
 
     while True:
@@ -225,7 +232,7 @@ def adjust_brightness_with_histogram(gray_img, minimum_brightness):
         if brightness >= minimum_brightness:
             break
 
-        percentile += 0.1
+        percentile += percentile_step
         alpha, beta = percentile_to_bias_and_gain(new_img, percentile)
         new_img = convertScale(gray_img, alpha = alpha, beta = beta)
         brightness_changed = True
@@ -307,6 +314,45 @@ def adjust_brightness_with_gamma(gray_img, minimum_brightness, gamma_step = GAMM
         changed = True
 
     if changed:
+        print("Old brightness: %3.3f, new brightness: %3.3f " %(old_brightness, brightness))
+    else:
+        print("Maintaining brightness at %3.3f" % old_brightness)
+        
+    return new_img
+
+def adjust_brightness_alpha_beta_gamma(gray_img, minimum_brightness, percentile_step = PERCENTILE_STEP, gamma_step = GAMMA_STEP):
+    """Adjusts brightness with histogram clipping by trial and error.
+    """
+
+    if 3 <= len(gray_img.shape):
+        raise ValueError("Expected a grayscale image, color channels found")
+
+    new_img = gray_img
+    percentile = percentile_step
+    gamma = 1
+    brightness_changed = False
+
+    while True:
+        cols, rows = new_img.shape
+        brightness = np.sum(new_img) / (255 * cols * rows)
+
+        if not brightness_changed:
+            old_brightness = brightness
+
+        if brightness >= minimum_brightness:
+            break
+        
+        # adjust alpha and beta
+        percentile += percentile_step
+        alpha, beta = percentile_to_bias_and_gain(new_img, percentile)
+        new_img = convertScale(gray_img, alpha = alpha, beta = beta)
+        brightness_changed = True
+
+        # adjust gamma
+        gamma += gamma_step
+        new_img = adjust_gamma(new_img, gamma = gamma)
+
+    if brightness_changed:
         print("Old brightness: %3.3f, new brightness: %3.3f " %(old_brightness, brightness))
     else:
         print("Maintaining brightness at %3.3f" % old_brightness)
@@ -461,7 +507,7 @@ def halftone_alexander(gray, tones_dict):
 def process_image(filepath, width, height, line_gap, red_weight,
                   green_weight, blue_weight, tones_str, overflow, minimum_brightness,
                   brightener, percentile_saturation,
-                  suffix = "", do_halftoning = False, do_previewing = True):
+                  suffix = "", do_halftoning = True, do_previewing = True):
 
     """Wrapper function that calls the others."""
 
@@ -515,7 +561,6 @@ def process_image(filepath, width, height, line_gap, red_weight,
     if percentile_saturation > 0:
         gray = saturate(gray, percentile_saturation)
 
-
     # Brightening method
     if DIRECT_BRIGHTENER == brightener:
         brightening_fn = adjust_brightness_directly
@@ -523,6 +568,8 @@ def process_image(filepath, width, height, line_gap, red_weight,
         brightener_fn = adjust_brightness_with_histogram
     elif GAMMA_BRIGHTENER == brightener:
         brightener_fn = adjust_brightness_with_gamma
+    elif ALPHABETAGAMMA_BRIGHTENER == brightener:
+        brightener_fn = adjust_brightness_alpha_beta_gamma
     else:
         assert False, "Unknown brightener: " + brightener
     bright = brightener_fn(gray, minimum_brightness = minimum_brightness)
