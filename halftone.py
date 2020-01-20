@@ -26,6 +26,7 @@ LASER_CUT_PRO_ALIAS_CORRECTION = 1
 # This value is the default for brightness adjustment of an image and works well
 # for the laser cutter in Cambridge.
 MINIMUM_BRIGHTNESS = 0.66
+PERCENTILE_SATURATION = 1
 
 RED_STANDARD = 299
 GREEN_STANDARD = 587
@@ -34,6 +35,11 @@ ALL_WEIGHTS = {"std": [RED_STANDARD, GREEN_STANDARD, BLUE_STANDARD],
                "red": [1, 0, 0],
                "green": [0, 1, 0],
                "blue": [0, 0, 1]}
+
+DIRECT_BRIGHTENER = "direct"
+ALPHABETA_BRIGHTENER = "alpha-beta"
+GAMMA_BRIGHTENER = "gamma"
+GAMMA_STEP = 0.01
 
 # 0 means black
 TONE_CHOICES_STR = ['1', '2', '3']
@@ -100,6 +106,8 @@ def get_args():
     parser.add_argument("-t", "--tones", default='3')
     parser.add_argument("-m", "--minimum_brightness", default=MINIMUM_BRIGHTNESS)
     parser.add_argument("-p", "--do_previewing", default="n")
+    parser.add_argument("-c", "--color_brightener", choices=[DIRECT_BRIGHTENER, ALPHABETA_BRIGHTENER, GAMMA_BRIGHTENER], default=GAMMA_BRIGHTENER)
+    parser.add_argument("-q", "--percentile_saturation", default=PERCENTILE_SATURATION)
 		
     # Array for all arguments passed to script
     args = parser.parse_args()
@@ -229,7 +237,84 @@ def adjust_brightness_with_histogram(gray_img, minimum_brightness):
         
     return new_img
 
+def saturate(img, percentile):
+    """Changes the scale of the image so that half of percentile at the low range
+    becomes 0, half of percentile at the top range becomes 255.
+    """
+
+    if 2 != len(img.shape):
+        raise ValueError("Expected an image with only one channel")
+
+    # copy values
+    channel = img[:, :].copy()
+    flat = channel.ravel()
+
+    # copy values and sort them
+    sorted_values = np.sort(flat)
+
+    # find points to clip
+    max_index = len(sorted_values) - 1
+    half_percent = percentile / 200
+    low_value = sorted_values[math.floor(max_index * half_percent)]
+    high_value = sorted_values[math.ceil(max_index * (1 - half_percent))]
+
+    # saturate
+    channel[channel < low_value] = low_value
+    channel[channel > high_value] = high_value
+
+    # scale the channel
+    channel_norm = channel.copy()
+    cv2.normalize(channel, channel_norm, 0, 255, cv2.NORM_MINMAX)
+
+    return channel_norm
+
+def adjust_gamma(img, gamma):
+    """Build a lookup table mapping the pixel values [0, 255] to
+	their adjusted gamma values.
+    """
+
+    # code from
+    # https://www.pyimagesearch.com/2015/10/05/opencv-gamma-correction/
+    
+    invGamma = 1.0 / gamma
+    table = np.array([((i / 255.0) ** invGamma) * 255 for i in np.arange(0, 256)]).astype("uint8")
+ 
+    # apply gamma correction using the lookup table
+    return cv2.LUT(img, table)
+
+
+def adjust_brightness_with_gamma(gray_img, minimum_brightness, gamma_step = GAMMA_STEP):
+
+    """Adjusts the brightness of an image by saturating the bottom and top
+    percentiles, and changing the gamma until reaching the required brightness.
+    """
+    if 3 <= len(gray_img.shape):
+        raise ValueError("Expected a grayscale image, color channels found")
+
+    cols, rows = gray_img.shape
+    changed = False
+    old_brightness = np.sum(gray_img) / (255 * cols * rows)
+    new_img = gray_img
+    gamma = 1
+
+    while True:
+        brightness = np.sum(new_img) / (255 * cols * rows)
+        if brightness >= minimum_brightness:
+            break
+
+        gamma += gamma_step
+        new_img = adjust_gamma(gray_img, gamma = gamma)
+        changed = True
+
+    if changed:
+        print("Old brightness: %3.3f, new brightness: %3.3f " %(old_brightness, brightness))
+    else:
+        print("Maintaining brightness at %3.3f" % old_brightness)
+        
+    return new_img
+
 def get_right_dimensions(img, width, height, overflow, line_gap, tone_dim):
+
     """Compute the right dimensions with these settings. This makes a difference in
     the case where the requested size is not divisible by the dimension of the
     half-tone, e.g. 85 mm with 0.05 scan gap is 1700 pixels, but the rescaling
@@ -374,7 +459,9 @@ def halftone_alexander(gray, tones_dict):
     return output
 
 def process_image(filepath, width, height, line_gap, red_weight,
-                  green_weight, blue_weight, tones_str, overflow, minimum_brightness, suffix = "", do_halftoning = True, do_previewing = True):
+                  green_weight, blue_weight, tones_str, overflow, minimum_brightness,
+                  brightener, percentile_saturation,
+                  suffix = "", do_halftoning = False, do_previewing = True):
 
     """Wrapper function that calls the others."""
 
@@ -424,12 +511,21 @@ def process_image(filepath, width, height, line_gap, red_weight,
                                 green_weight = green_weight,
                                 blue_weight = blue_weight)
 
-    # Adjust brightness
-    if False:
-        brightener = adjust_brightness_directly
+    # Saturate
+    if percentile_saturation > 0:
+        gray = saturate(gray, percentile_saturation)
+
+
+    # Brightening method
+    if DIRECT_BRIGHTENER == brightener:
+        brightening_fn = adjust_brightness_directly
+    elif ALPHABETA_BRIGHTENER == brightener:
+        brightener_fn = adjust_brightness_with_histogram
+    elif GAMMA_BRIGHTENER == brightener:
+        brightener_fn = adjust_brightness_with_gamma
     else:
-        brightener = adjust_brightness_with_histogram
-    bright = brightener(gray, minimum_brightness = minimum_brightness)
+        assert False, "Unknown brightener: " + brightener
+    bright = brightener_fn(gray, minimum_brightness = minimum_brightness)
 
     if not do_halftoning:
         cv2.imwrite(new_filepath, bright)
@@ -464,7 +560,7 @@ def process_image(filepath, width, height, line_gap, red_weight,
     print("Saved preview at %s" % preview_fp)
 
 def process_all_options(filepath, width, height, line_gap, overflow, minimum_brightness,
-                        do_previewing):
+                        percentile_saturation, do_previewing):
 
 
     for tones_str in TONE_CHOICES_STR:
@@ -511,6 +607,8 @@ def main():
     overflow = args.overflow
     all_options = args.all_options
     minimum_brightness = float(args.minimum_brightness)
+    percentile_saturation = float(args.percentile_saturation)
+    brightener = args.color_brightener
     do_previewing = args.do_previewing == "y"
 
     assert os.path.exists(filepath), "Input file not found!"
@@ -523,6 +621,7 @@ def main():
         process_all_options(filepath, width = width, height = height,
                             line_gap = line_gap, overflow = overflow,
                             minimum_brightness = minimum_brightness,
+                            percentile_saturation = percentile_saturation,
                             do_previewing = do_previewing)
     else:
         red_weight = int(args.red)
@@ -534,7 +633,10 @@ def main():
                       line_gap = line_gap, overflow = overflow,
                       red_weight = red_weight, green_weight = green_weight,
                       blue_weight = blue_weight, tones_str = tones_str,
-                      minimum_brightness = minimum_brightness, do_previewing = do_previewing)
+                      minimum_brightness = minimum_brightness,
+                      percentile_saturation = percentile_saturation,
+                      brightener = brightener,
+                      do_previewing = do_previewing)
                       
 
 if "__main__" == __name__:
