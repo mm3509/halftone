@@ -65,6 +65,8 @@ some time to load):
 
 <img alt="Bitmap of poster" src="https://github.com/miguelmorin/halftone/blob/master/images/Attack%20of%20the%2050%20ft%20improvisers.png" width=250>
 
+## Cutting
+
 For best results on LaserCut Pro 5, you should give it a 1-bit depth bitmap that
 does not require additional processing, simply telling the laser where to turn
 on and off. Otherwise, you will need to process it with `Tools > Half Bmitmap`
@@ -73,11 +75,21 @@ the image to the desired size because the default resolution of 72 ppi changes
 the size of the image and the line gap of 0.05mm no longer corresponds to one
 pixel.
 
-I used this image at the Cambridge Makespace on pine wood with the following
-nice result:
+If you need to cut around the image too, create the outline with the desired size,
+and centre this outline and the raster image by clicking the icon that looks
+like "centre-justify this piece of text" on both of them. This will align both
+objects to the centre of the board and they will be aligned.
+
+I used this image at the Cambridge Makespace on pine wood with the nice result
+that follows:
 
 ![Engraving on pine wood](https://github.com/miguelmorin/halftone/blob/master/images/result.JPG)
 
+## Material
+
+The results depend on the material. When the laser engraves plywood, it sets it
+on a tiny fire that spreads locally. So the same image engraved in plywood will
+look darker than engraved in acrylic.
 
 ## Options
 
